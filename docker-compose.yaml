@@ -1,0 +1,50 @@
+services:
+  tr1d1um:
+    image: tr1d1um
+    container_name: tr1d1um
+    build:
+      context: ./tr1d1um
+      dockerfile: Dockerfile
+    ports:
+      - "6100-6103:6100-6103"
+    volumes:
+      -  ./tr1d1um/tr1d1um.yaml:/etc/tr1d1um/tr1d1um.yaml
+    networks:
+      - webpa_networks
+    depends_on:
+      - scytale
+
+  scytale:
+    image: scytale
+    container_name: scytale
+    build:
+      context: ./scytale
+      dockerfile: Dockerfile
+    ports:
+      - "6300-6303:6300-6303"
+    volumes:
+      - ./scytale/scytale.yaml:/etc/scytale/scytale.yaml
+    networks:
+      - webpa_networks
+    depends_on:
+      - talaria
+
+  talaria:
+    image: talaria
+    container_name: talaria
+    build:
+      context: ./talaria
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+      - "6200-6204:6200-6204"
+    volumes:
+      - ./talaria/talaria.yaml:/etc/talaria/talaria.yaml
+    networks:
+      - webpa_networks
+
+networks:
+  webpa_networks:
+    driver: bridge
+
+
