@@ -2,6 +2,11 @@
 FROM golang:1.24 AS builder
  
 WORKDIR /app
+
+RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
+
+RUN git clone https://github.com/rdkcentral/xconfadmin.git .
+
 COPY . .
  
 # Build a static binary compatible with Alpine
