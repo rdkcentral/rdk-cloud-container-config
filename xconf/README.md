@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 # rdk-cloud-container-config
 Hosts container files for RDK Cloud Components such as Webpa and XConf
 =======
@@ -32,4 +31,4 @@ From the xconf folder,
 run below command
 
 $ docker compose up --build -d
->>>>>>> a23034b (RDKCLOUD-113 : Upstream changes for xconf container configuration)
+
