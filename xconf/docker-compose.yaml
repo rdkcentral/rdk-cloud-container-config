@@ -1,0 +1,101 @@
+services:
+
+  cassandra:
+    container_name: cassandra
+    hostname: cassandra
+    image: "docker.io/cassandra:3.11"
+    ports:
+      - "9042:9042"
+    volumes:
+      - "./cassandra/db/db_init.cql:/docker-entrypoint-initdb.d/db_init.cql"
+      - "./cassandra/db/db_create_tables.cql:/docker-entrypoint-initdb.d/db_create_tables.cql"
+    healthcheck:
+      test: ["CMD-SHELL", "nodetool statusgossip | grep -q 'running'"]
+      interval: 30s
+      timeout: 10s
+      retries: 5
+    networks:
+      - xconf_networks
+
+  cassandra-init:
+    image: cassandra:3.11
+    restart: "no"
+    depends_on:
+      cassandra:
+        condition: service_healthy
+    volumes:
+      - "./cassandra/db:/db"
+      - "./cassandra/db/db_init.cql:/docker-entrypoint-initdb.d/db_init.cql"
+      - "./cassandra/db/db_create_tables.cql:/docker-entrypoint-initdb.d/db_create_tables.cql"
+      - "./init-cassandra.sh:/init-cassandra.sh"
+    entrypoint: ["/bin/bash", "/init-cassandra.sh"]
+    healthcheck:
+      test: ["CMD-SHELL", "test -f /db/schema_ready"]
+      interval: 5s
+      timeout: 5s
+      retries: 3
+    networks:
+      - xconf_networks
+
+  xconfwebconfig:
+    container_name: xconfwebconfig
+    image: xconfwebconfig
+    environment:
+      SAT_CLIENT_ID: "xxxxxx"
+      SAT_CLIENT_SECRET: "yyyyyy"
+      SAT_KEY: "dXNlcjpwYXNz"
+    build:
+      context: ./xconfwebconfig
+      dockerfile: Dockerfile
+    networks:
+      - xconf_networks
+    ports:
+      - "9000:9000"
+    depends_on:
+      cassandra-init:
+        condition: service_healthy
+    links:
+      - "cassandra:cassandravm"
+    volumes:
+      - ./xconfwebconfig/data_service_start.sh:/app/xconfwebconfig/data_service_start.sh
+
+  xconfadmin:
+    container_name: xconfadmin
+    image: xconfadmin
+    build:
+      context: ./xconfadmin
+      dockerfile: Dockerfile
+    networks:
+      - xconf_networks
+    ports:
+      - "9001:9001"
+    depends_on:
+      cassandra-init:
+        condition: service_healthy
+    links:
+      - "cassandra:cassandravm"
+
+  xconfui:
+    container_name: xconfui
+    image: xconfui
+    build:
+      context: ./xconfui
+      dockerfile: Dockerfile
+    networks:
+      - xconf_networks
+    ports:
+      - "8081:8081"
+    depends_on:
+      cassandra-init:
+        condition: service_healthy
+    volumes:
+      - "./configs/xconfui.conf:/app/xconfui/xconfui.conf"
+
+networks:
+  xconf_networks:
+    driver: bridge
+
+
+volumes:
+  cassandra_data:
+    name: cassandra_data
