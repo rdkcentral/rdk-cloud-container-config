@@ -45,8 +45,6 @@ WORKDIR /app/xconfadmin
 COPY --from=builder /app/bin/xconfadmin-linux-amd64 .
 COPY --from=builder /app/config/sample_xconfadmin.conf ./xconfadmin.conf
 
-#RUN sed -i '/^hosts[[:space:]]*=/,/]/ s/"127\.0\.0\.1"/"cassandra"/' ./xconfadmin.conf
-
 RUN sed -i 's/127\.0\.0\.1/cassandra/g' ./xconfadmin.conf
  
 RUN chmod +x xconfadmin-linux-amd64 && chmod 666 ./xconfadmin.conf
