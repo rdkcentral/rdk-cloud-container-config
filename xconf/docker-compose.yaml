@@ -3,7 +3,7 @@ services:
   cassandra:
     container_name: cassandra
     hostname: cassandra
-    image: "docker.io/cassandra:5.0.6"
+    image: "docker.io/cassandra:3.11"
     ports:
       - "9042:9042"
     volumes:
@@ -18,7 +18,7 @@ services:
       - xconf_networks
 
   cassandra-init:
-    image: cassandra:5.0.6
+    image: cassandra:3.11
     restart: "no"
     depends_on:
       cassandra:
