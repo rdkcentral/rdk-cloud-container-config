@@ -45,7 +45,7 @@ webconfig/
 
 1. Navigate to the srv-ref-app directory:
    ```bash
-   cd ~/rdk-docker/rdk-cloud-container-config/webconfig/srv-ref-app
+   cd rdk-cloud-container-config/webconfig/srv-ref-app
    ```
 
 2. Install Python dependencies:
@@ -115,7 +115,7 @@ The application will be accessible at `http://<host_ip>:<port>/app1/`
 ### Example API Usage
 
 ```bash
-curl -s -i "http://webconfig.rdkcentral.com:9008/api/v1/device/AABBCCDDEEFF/document/privatessid?param_name=Device.WiFi.Private" \
+curl -s -i "http://127.0.0.1:5000/app1/api/v1/device/AABBCCDDEEFF/document/privatessid?param_name=Device.WiFi.Private" \
   -H 'Content-type: application/json' \
   -X POST \
   --data '{
@@ -230,7 +230,6 @@ which go
 
 ## Development Notes
 
-- Debug mode is enabled in the Flask app by default (`debug=True`)
 - All console output is printed for debugging purposes
 - Temporary `subdoc_data.json` files are created in the current working directory
 - Both form-based and REST API submissions follow the same processing pipeline
