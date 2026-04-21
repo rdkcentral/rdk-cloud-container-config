@@ -207,8 +207,8 @@ func createSubdoc(jsonFile string, subdocType string, tr181 string) error {
 }
 
 func writeToDB(macAddr string, subdocName string) error {
-    // Prepare URL and headers
-    url := fmt.Sprintf("http://webconfig.rdkcentral.com:9007/api/v1/device/%s/document/%s", macAddr, subdocName)
+    // Prepare URL and headers, Replace with actual server host ip and port for webconfig server
+    url := fmt.Sprintf("http://127.0.0.1:5000/api/v1/device/%s/document/%s", macAddr, subdocName)
     headers := map[string]string{
         "Content-type": "application/msgpack",
     }
