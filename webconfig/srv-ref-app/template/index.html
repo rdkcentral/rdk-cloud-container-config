@@ -1,0 +1,18 @@
+<!DOCTYPE html>
+<html>
+    <h1 style="color: red; font-size: 16px;"> WebConfig UI </h2>
+<body>
+<form action="/app1/send" method="POST">
+<label for="text_input">Name  </label>
+<input type="text" id="subdoc_name" name="subdoc_name" placeholder="Subdoc Name" required oninvalid="this.setCustomValidity('Invalid Input')" oninput="setCustomValidity('')"><br>
+<label for="text_input">Data  </label>
+<input type="text" id="subdoc_data" name="subdoc_data" placeholder="Subdoc Data" required oninvalid="this.setCustomValidity('Invalid Input')" oninput="setCustomValidity('')"><br>
+<label for="text_input">TR181 </label>
+<input type="text" id="param_name" name="param_name" placeholder="Param Name" required oninvalid="this.setCustomValidity('Invalid Input')" oninput="setCustomValidity('')"><br>
+<label for="text_input">MAC   </label>
+<input type="text" id="mac_address" name="mac_address" placeholder="MAC Address" required oninvalid="this.setCustomValidity('Invalid Input')" oninput="setCustomValidity('')"><br>
+<input type="submit" value="Submit">
+</form>
+</body>
+</html>
+
