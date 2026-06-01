@@ -1,18 +1,90 @@
 <!DOCTYPE html>
-<html>
-    <h1 style="color: red; font-size: 16px;"> WebConfig UI </h2>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="description" content="WebConfig UI - Configure Device Settings">
+    <title>WebConfig UI - Device Configuration</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='style.css') }}">
+</head>
 <body>
-<form action="/app1/send" method="POST">
-<label for="text_input">Name  </label>
-<input type="text" id="subdoc_name" name="subdoc_name" placeholder="Subdoc Name" required oninvalid="this.setCustomValidity('Invalid Input')" oninput="setCustomValidity('')"><br>
-<label for="text_input">Data  </label>
-<input type="text" id="subdoc_data" name="subdoc_data" placeholder="Subdoc Data" required oninvalid="this.setCustomValidity('Invalid Input')" oninput="setCustomValidity('')"><br>
-<label for="text_input">TR181 </label>
-<input type="text" id="param_name" name="param_name" placeholder="Param Name" required oninvalid="this.setCustomValidity('Invalid Input')" oninput="setCustomValidity('')"><br>
-<label for="text_input">MAC   </label>
-<input type="text" id="mac_address" name="mac_address" placeholder="MAC Address" required oninvalid="this.setCustomValidity('Invalid Input')" oninput="setCustomValidity('')"><br>
-<input type="submit" value="Submit">
-</form>
+    <div class="container">
+        <h1>WebConfig Device Configuration</h1>
+
+        <!-- Feedback messages -->
+        <div id="feedback" class="feedback"></div>
+
+        <form id="webconfig-form" action="/app1/send" method="POST" novalidate>
+            <!-- Subdoc Name -->
+            <div class="form-group">
+                <label for="subdoc_name">Subdocument Name *</label>
+                <input
+                    type="text"
+                    id="subdoc_name"
+                    name="subdoc_name"
+                    placeholder="e.g., lan, wan, portforwarding"
+                    pattern="[a-zA-Z0-9_-]+"
+                    title="Only letters, numbers, underscore, and hyphen allowed"
+                    required
+                    aria-label="Subdocument name"
+                    autocomplete="off"
+                >
+                <span class="error-message">Please enter a valid subdocument name</span>
+            </div>
+
+            <!-- Subdoc Data (JSON) -->
+            <div class="form-group">
+                <label for="subdoc_data">Configuration Data (JSON) *</label>
+                <textarea
+                    id="subdoc_data"
+                    name="subdoc_data"
+                    placeholder="Enter JSON configuration data"
+                    required
+                    aria-label="Configuration data in JSON format"
+                    spellcheck="false"
+                ></textarea>
+                <span class="error-message">Please enter valid JSON data</span>
+            </div>
+
+            <!-- TR181 Parameter Name -->
+            <div class="form-group">
+                <label for="param_name">TR181 Parameter Name *</label>
+                <input
+                    type="text"
+                    id="param_name"
+                    name="param_name"
+                    placeholder="e.g., Device.Subsystem.Parameter"
+                    pattern="Device\.[a-zA-Z0-9_.]+"
+                    title="Must follow TR181 format: Device.Subsystem.Parameter"
+                    required
+                    aria-label="TR181 parameter name"
+                    autocomplete="off"
+                >
+                <span class="error-message">Please enter a valid TR181 parameter name</span>
+            </div>
+
+            <!-- MAC Address -->
+            <div class="form-group">
+                <label for="mac_address">Device MAC Address *</label>
+                <input
+                    type="text"
+                    id="mac_address"
+                    name="mac_address"
+                    placeholder="e.g., AA:BB:CC:DD:EE:FF or AABBCCDDEEFF"
+                    pattern="^([0-9a-fA-F]{2}:){5}([0-9a-fA-F]{2})$|^([0-9a-fA-F]{2}){6}$"
+                    title="Enter MAC address in format XX:XX:XX:XX:XX:XX or XXXXXXXXXXXX"
+                    required
+                    aria-label="Device MAC address"
+                    autocomplete="off"
+                >
+                <span class="error-message">Please enter a valid MAC address</span>
+            </div>
+
+            <!-- Submit Button -->
+            <button type="submit" id="submit-btn">Submit Configuration</button>
+        </form>
+    </div>
+
+    <script src="{{ url_for('static', filename='form.js') }}"></script>
 </body>
 </html>
-

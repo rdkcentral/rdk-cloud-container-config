@@ -4,11 +4,12 @@ import (
         "bytes"
         "encoding/json"
         "fmt"
-        "io/ioutil"
         "log"
         "net/http"
         "os"
-
+        "regexp"
+        "strings"
+        "strconv"
         "github.com/vmihailenco/msgpack/v5"
 )
 
@@ -55,67 +56,276 @@ type PortForwarding struct {
     PortForwarding []PortForwardingData `json:"portforwarding" msgpack:"portforwarding"`
 }
 
+type Config struct {
+    WebconfigServer struct {
+        Host        string `json:"host"`
+        Port        int    `json:"port"`
+        APIEndpoint string `json:"api_endpoint"`
+    } `json:"webconfig_server"`
+    FilePermissions string `json:"file_permissions"`
+    Logging struct {
+        Level  string `json:"level"`
+        Output string `json:"output"`
+    } `json:"logging"`
+    TimeoutSeconds int `json:"timeout_seconds"`
+    MaxRetries     int `json:"max_retries"`
+}
+
+func loadConfig(configFile string) (*Config, error) {
+    data, err := os.ReadFile(configFile)
+    if err != nil {
+        return nil, fmt.Errorf("failed to read config file: %w", err)
+    }
+
+    var cfg Config
+    if err := json.Unmarshal(data, &cfg); err != nil {
+        return nil, fmt.Errorf("failed to parse config file: %w", err)
+    }
+
+    return &cfg, nil
+}
+
+// Helper to validate IP format
+func isValidIP(ip string) bool {
+    parts := strings.Split(ip, ".")
+    if len(parts) != 4 {
+        return false
+    }
+    for _, part := range parts {
+        num, err := strconv.Atoi(part)
+        if err != nil || num < 0 || num > 255 {
+            return false
+        }
+    }
+    return true
+}
+
 // Helper function to parse boolean values
-func parseBool(value interface{}) bool {
+func parseBool(value interface{}) (bool, error) {
     switch v := value.(type) {
     case bool:
-        return v
+        return v, nil
     case string:
-        return v == "true"
+        // Handle case-insensitive: "true", "TRUE", "True", "1"
+        normalized := strings.ToLower(v)
+        switch normalized {
+        case "true", "1", "yes":
+            return true, nil
+        case "false", "0", "no":
+            return false, nil
+        default:
+            return false, fmt.Errorf("invalid boolean value: %q", v)
+        }
+    case float64:
+        if v == 0 {
+            return false, nil
+        } else if v == 1 {
+            return true, nil
+        }
+        return false, fmt.Errorf("invalid boolean numeric value: %v", v)
+    case nil:
+        return false, fmt.Errorf("boolean value is nil")
     default:
-        panic(fmt.Sprintf("unexpected type for boolean value: %T", v))
+        return false, fmt.Errorf("unexpected type for boolean value: %T, value: %v", v, v)
     }
 }
 
 // Helper function to parse integer values
-func parseInt(value interface{}) int {
+func parseInt(value interface{}) (int, error) {
     switch v := value.(type) {
     case float64:
-        return int(v)
+        return int(v), nil
     case int:
-        return v
+        return v, nil
+    case string:
+        // Try to parse string as integer
+        intVal, err := strconv.Atoi(v)
+        if err != nil {
+            return 0, fmt.Errorf("cannot convert string to int: %q - %v", v, err)
+        }
+        return intVal, nil
+    case nil:
+        return 0, fmt.Errorf("integer value is nil")
     default:
-        panic(fmt.Sprintf("unexpected type for integer value: %T", v))
+        return 0, fmt.Errorf("unexpected type for integer value: %T, value: %v", v, v)
     }
 }
 
-func handleLan(subdocData map[string]interface{}) EmbeddedLan {
+// SafeGetString with default value
+func safeGetString(data map[string]interface{}, key string, defaultVal string) (string, error) {
+    val, exists := data[key]
+    if !exists {
+        return defaultVal, fmt.Errorf("key %q not found in data", key)
+    }
+
+    if val == nil {
+        return defaultVal, fmt.Errorf("key %q has nil value", key)
+    }
+
+    strVal, ok := val.(string)
+    if !ok {
+        return defaultVal, fmt.Errorf("key %q expected string, got %T", key, val)
+    }
+
+    if strVal == "" {
+        return defaultVal, fmt.Errorf("key %q is empty string", key)
+    }
+
+    return strVal, nil
+}
+
+// SafeGetInt with default value
+func safeGetInt(data map[string]interface{}, key string, defaultVal int) (int, error) {
+    val, exists := data[key]
+    if !exists {
+        return defaultVal, fmt.Errorf("key %q not found in data", key)
+    }
+
+    if val == nil {
+        return defaultVal, fmt.Errorf("key %q has nil value", key)
+    }
+
+    return parseInt(val)
+}
+
+// SafeGetBool with default value
+func safeGetBool(data map[string]interface{}, key string, defaultVal bool) (bool, error) {
+    val, exists := data[key]
+    if !exists {
+        return defaultVal, fmt.Errorf("key %q not found in data", key)
+    }
+
+    if val == nil {
+        return defaultVal, fmt.Errorf("key %q has nil value", key)
+    }
+
+    return parseBool(val)
+}
+
+func handleLan(subdocData map[string]interface{}) (EmbeddedLan, error) {
+    dhcp, err := safeGetBool(subdocData, "DhcpServerEnable", false)
+    if err != nil {
+        return EmbeddedLan{}, err
+    }
+
+    lanIP, err := safeGetString(subdocData, "LanIPAddress", "")
+    if err != nil {
+        return EmbeddedLan{}, err
+    }
+
+    lanSubnet, err := safeGetString(subdocData, "LanSubnetMask", "")
+    if err != nil {
+        return EmbeddedLan{}, err
+    }
+
+    dhcpStart, err := safeGetString(subdocData, "DhcpStartIPAddress", "")
+    if err != nil {
+        return EmbeddedLan{}, err
+    }
+
+    dhcpEnd, err := safeGetString(subdocData, "DhcpEndIPAddress", "")
+    if err != nil {
+        return EmbeddedLan{}, err
+    }
+
+    leaseTime, err := safeGetInt(subdocData, "LeaseTime", 3600)
+    if err != nil {
+        return EmbeddedLan{}, err
+    }
+
+
     return EmbeddedLan{
         Lan: EmbeddedLanData{
-            DhcpServerEnable:   parseBool(subdocData["DhcpServerEnable"]),
-            LanIPAddress:       subdocData["LanIPAddress"].(string),
-            LanSubnetMask:      subdocData["LanSubnetMask"].(string),
-            DhcpStartIPAddress: subdocData["DhcpStartIPAddress"].(string),
-            DhcpEndIPAddress:   subdocData["DhcpEndIPAddress"].(string),
-            LeaseTime:          parseInt(subdocData["LeaseTime"]),
+            DhcpServerEnable:   dhcp,
+            LanIPAddress:       lanIP,
+            LanSubnetMask:      lanSubnet,
+            DhcpStartIPAddress: dhcpStart,
+            DhcpEndIPAddress:   dhcpEnd,
+            LeaseTime:          leaseTime,
         },
-    }
+    }, nil
 }
 
-func handleWan(subdocData map[string]interface{}) EmbeddedWan {
+func handleWan(subdocData map[string]interface{}) (EmbeddedWan, error) {
+    enable, err := safeGetBool(subdocData, "Enable", false)
+    if err != nil {
+        return EmbeddedWan{}, err
+    }
+
+    internalIP, err := safeGetString(subdocData, "InternalIP", "")
+    if err != nil {
+        return EmbeddedWan{}, err
+    }
+
+    if !isValidIP(internalIP) {
+        return EmbeddedWan{}, fmt.Errorf("invalid InternalIP: %q", internalIP)
+    }
+
     return EmbeddedWan{
         Wan: EmbeddedWanData{
-            Enable:     parseBool(subdocData["Enable"]),
-            InternalIP: subdocData["InternalIP"].(string),
+            Enable:     enable,
+            InternalIP: internalIP,
         },
-    }
+    }, nil
 }
 
-func handlePortForwarding(subdocData interface{}) PortForwarding {
+func handlePortForwarding(subdocData interface{}) (PortForwarding, error) {
+    subdocList, ok := subdocData.([]interface{})
+    if !ok {
+        return PortForwarding{}, fmt.Errorf("portforwarding data is not a list, got %T", subdocData)
+    }
+
     var portForwardingList []PortForwardingData
-    for _, item := range subdocData.([]interface{}) {
+
+    for idx, item := range subdocList {
+        itemMap, ok := item.(map[string]interface{})
+        if !ok {
+            return PortForwarding{}, fmt.Errorf("portforwarding item %d is not a map, got %T", idx, item)
+        }
+
+        internalClient, err := safeGetString(itemMap, "InternalClient", "")
+        if err != nil {
+            return PortForwarding{}, fmt.Errorf("item %d: %w", idx, err)
+        }
+
+        externalPortEndRange, err := safeGetString(itemMap, "ExternalPortEndRange", "")
+        if err != nil {
+            return PortForwarding{}, fmt.Errorf("item %d: %w", idx, err)
+        }
+
+        enable, err := safeGetBool(itemMap, "Enable", false)
+        if err != nil {
+            return PortForwarding{}, fmt.Errorf("item %d: %w", idx, err)
+        }
+
+        protocol, err := safeGetString(itemMap, "Protocol", "")
+        if err != nil {
+            return PortForwarding{}, fmt.Errorf("item %d: %w", idx, err)
+        }
+
+        description, err := safeGetString(itemMap, "Description", "")
+        if err != nil {
+            return PortForwarding{}, fmt.Errorf("item %d: %w", idx, err)
+        }
+
+        externalPort, err := safeGetString(itemMap, "ExternalPort", "")
+        if err != nil {
+            return PortForwarding{}, fmt.Errorf("item %d: %w", idx, err)
+        }
+
         portForwardingList = append(portForwardingList, PortForwardingData{
-            InternalClient:       item.(map[string]interface{})["InternalClient"].(string),
-            ExternalPortEndRange: item.(map[string]interface{})["ExternalPortEndRange"].(string),
-            Enable:               parseBool(item.(map[string]interface{})["Enable"]),
-            Protocol:             item.(map[string]interface{})["Protocol"].(string),
-            Description:          item.(map[string]interface{})["Description"].(string),
-            ExternalPort:         item.(map[string]interface{})["ExternalPort"].(string),
+            InternalClient:       internalClient,
+            ExternalPortEndRange: externalPortEndRange,
+            Enable:               enable,
+            Protocol:             protocol,
+            Description:          description,
+            ExternalPort:         externalPort,
         })
     }
+
     return PortForwarding{
         PortForwarding: portForwardingList,
-    }
+    }, nil
 }
 
 func unmarshalJSON(data []byte) (interface{}, error) {
@@ -128,12 +338,12 @@ func unmarshalJSON(data []byte) (interface{}, error) {
 
 func createSubdoc(jsonFile string, subdocType string, tr181 string) error {
     var subdoc interface{}
+    var err error
 
     // Read JSON file
-    data, err := ioutil.ReadFile(jsonFile)
+    data, err := os.ReadFile(jsonFile)
     if err != nil {
-        log.Fatalf("Failed to read JSON file: %v", err)
-        return err
+        return fmt.Errorf("failed to read JSON file: %w", err)
     }
 
     // Unmarshal JSON into map[string]interface{}
@@ -156,19 +366,28 @@ func createSubdoc(jsonFile string, subdocType string, tr181 string) error {
    // Handle subdoc types
     switch subdocType {
     case "lan":
-        subdoc = handleLan(subdocData)
+        subdoc, err = handleLan(subdocData)
     case "wan":
-        subdoc = handleWan(subdocData)
+        subdoc, err = handleWan(subdocData)
     case "portforwarding":
-        subdoc = handlePortForwarding(subdocData["listData"])
+        subdoc, err = handlePortForwarding(subdocData["listData"])
     case "privatessid":
         subdoc = subdocData
     default:
         subdoc = subdocData
     }
 
-    prettyJSON, err := json.MarshalIndent(subdoc, "", "  ")
-    fmt.Println(string(prettyJSON))
+    if err != nil {
+        return fmt.Errorf("failed to build subdoc for %q: %w", subdocType, err)
+    }
+
+    prettyJSON, err := json.MarshalIndent(subdoc, "", "  ")
+    if err != nil {
+        return fmt.Errorf("failed to marshal JSON: %w", err)
+    }
+    if os.Getenv("DEBUG") == "1" {
+        fmt.Println(string(prettyJSON))
+    }
 
     // Serialize subdoc into MsgPack format
     stringifiedBin, err := msgpack.Marshal(subdoc)
@@ -188,7 +407,6 @@ func createSubdoc(jsonFile string, subdocType string, tr181 string) error {
             },
     }
 
-
     // MsgPack final encoding
     msgpackFormat, err := msgpack.Marshal(blobData)
     if err != nil {
@@ -206,28 +424,49 @@ func createSubdoc(jsonFile string, subdocType string, tr181 string) error {
     return nil
 }
 
-func writeToDB(macAddr string, subdocName string) error {
-    // Prepare URL and headers, Replace with actual server host ip and port for webconfig server
-    url := fmt.Sprintf("http://127.0.0.1:5000/api/v1/device/%s/document/%s", macAddr, subdocName)
-    headers := map[string]string{
-        "Content-type": "application/msgpack",
+func validateMACAddress(macAddr string) error {
+    // Accept only uppercase hex without separators, e.g. A1B2C3D4E5F6.
+   // if !regexp.MustCompile(`^[0-9A-F]{12}$`).MatchString(macAddr) {
+    macRegex := regexp.MustCompile(`^(?:[0-9A-Fa-f]{2}[:-]){5}(?:[0-9A-Fa-f]{2})|(?:[0-9A-Fa-f]{2}){6}$`)
+
+    if !macRegex.MatchString(macAddr) {
+        return fmt.Errorf("invalid MAC address format: %q", macAddr)
     }
+    return nil
+}
+
+func writeToDB(macAddr string, subdocName string, cfg *Config) error {
+    // Validate MAC address first
+    if err := validateMACAddress(macAddr); err != nil {
+        return err
+    }
+
+    // Build URL from config
+    url := fmt.Sprintf(
+        "http://%s:%d%s",
+        cfg.WebconfigServer.Host,
+        cfg.WebconfigServer.Port,
+        fmt.Sprintf(cfg.WebconfigServer.APIEndpoint, macAddr, subdocName),
+    )
 
     // Read MsgPack file
     msgpackBin := fmt.Sprintf("%s.msgpack", subdocName)
-    fileData, err := ioutil.ReadFile(msgpackBin)
+    fileData, err := os.ReadFile(msgpackBin)
     if err != nil {
-        return fmt.Errorf("failed to read MsgPack file: %v", err)
+        return fmt.Errorf("failed to read msgpack file: %w", err)
     }
 
     // Send POST request
-    req, err := http.NewRequest("POST", url, ioutil.NopCloser(bytes.NewReader(fileData)))
+    req, err := http.NewRequest(
+        "POST",
+	url,
+	bytes.NewReader(fileData),
+//	io.NopCloser(bytes.NewReader(fileData)),
+    )
     if err != nil {
         return fmt.Errorf("failed to create POST request: %v", err)
     }
-    for key, value := range headers {
-        req.Header.Set(key, value)
-    }
+    req.Header.Set("Content-Type", "application/msgpack")
 
     client := &http.Client{}
     resp, err := client.Do(req)
@@ -255,15 +494,25 @@ func main() {
     tr181 := os.Args[3]
     macAddr := os.Args[4]
 
-    // Create MsgPack binary from JSON data
-    err := createSubdoc(subdocJSON, subdocName, tr181)
+    // Load config
+    cfg, err := loadConfig("config.json")
     if err != nil {
-        log.Fatalf("Error creating MsgPack binary: %v", err)
+        fmt.Fprintf(os.Stderr, "Error loading config: %v\n", err)
+        os.Exit(1)
+    }
+
+    // Create MsgPack binary from JSON data
+    if err := createSubdoc(subdocJSON, subdocName, tr181); err != nil {
+        fmt.Fprintf(os.Stderr, "Error creating MsgPack binary: %v\n", err)
+        os.Exit(1)
     }
 
     // Push MsgPack data to the server
-    if err := writeToDB(macAddr, subdocName); err != nil {
-        log.Fatalf("Error pushing MsgPack data: %v", err)
+    if err := writeToDB(macAddr, subdocName, cfg); err != nil {
+        fmt.Fprintf(os.Stderr, "Error pushing MsgPack data: %v\n", err)
+        os.Exit(1)
     }
+
+    fmt.Println("MsgPack creation and upload successful")
 }
 

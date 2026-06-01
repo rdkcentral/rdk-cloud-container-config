@@ -1,5 +1,3 @@
-from flask import Flask, Blueprint, render_template, request, Response, jsonify
-import json
 import re
 import subprocess
 
@@ -11,11 +9,19 @@ app1 = Blueprint('app1', __name__, url_prefix='/app1')
 def index():
     return render_template('index.html')
 
+
 def sanitize_mac_address(mac_address):
-    mac_address = mac_address.replace(":", "").lower()
-    # Validate MAC address format (optional)
-    if not re.match(r'^([0-9a-fA-F]{2}){5}[0-9a-fA-F]{2}$', mac_address):
+    if not isinstance(mac_address, str):
         return -1
+
+    # Strip whitespace, remove all common separators
+    mac_address = mac_address.strip()
+    mac_address = re.sub(r'[:.\-\s]', '', mac_address).upper()
+
+    # Must be exactly 12 valid hex characters
+    if not re.match(r'^[0-9A-F]{12}$', mac_address):
+        return -1
+
     return mac_address
 
 def normalize_json_data(data):
@@ -45,9 +51,13 @@ def normalize_json_data(data):
                 data[i] = normalize_json_data(data[i])
     return data
 
+
 @app1.route('/send', methods=['POST'])
 def receive_data():
-    if request.method == 'POST':
+    try:
+        if request.method != 'POST':
+            return jsonify({"error": "Only POST method allowed"}), 405
+
         print("Received data from Webconfig UI")
         subdoc_name = request.form.get('subdoc_name')
         print("Received subdoc_name data from UI:" ,subdoc_name)
@@ -73,15 +83,22 @@ def receive_data():
         cmd = [
              "go", "run", "create_msgpack_main.go", "subdoc_data.json", subdoc_name, param_name, MAC
         ]
-        result = subprocess.run(cmd, capture_output=True, text=True)
+        try:
+            result = subprocess.run(cmd, capture_output=True, text=True)
+        except Exception as e:
+            return jsonify({"error": f"Failed to execute Go process: {str(e)}"}), 500
 
         if result.returncode != 0:
             return jsonify({"error": result.stderr}), 500
 
-        if result.returncode == 0:
-            return "Request Submitted Successfully"
-        else:
-            return "Request Failed"
+        return jsonify({
+            "message": "Request Submitted Successfully",
+            "subdoc": subdoc_name,
+            "mac": MAC}), 200
+
+    except Exception as e:
+        return jsonify({"Unexpected server error": str(e)}), 500
+
 
 @app1.route('/api/v1/device/<mac>/document/<doc_name>', methods=['POST'])
 def handle_request(mac, doc_name):
@@ -118,17 +135,11 @@ def handle_request(mac, doc_name):
   except Exception as e:
      return jsonify({"error": str(e)}), 500
 
-
 app.register_blueprint(app1)
 
 @app.route('/')
 def root_blocked():
     abort(404)
-
-# Optional: a custom 404 page
-@app.errorhandler(404)
-def not_found(e):
-    return render_template('404.html'), 404
 
 
 if __name__ == '__main__':
