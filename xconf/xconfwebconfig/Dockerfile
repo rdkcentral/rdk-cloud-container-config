@@ -1,5 +1,6 @@
-# Start from Go 1.23 base image
-FROM golang:1.23 AS builder
+ARG GO_VERSION
+
+FROM golang:${GO_VERSION} AS builder
 
 # Install git (needed for cloning)
 RUN apt-get update && apt-get install -y --no-install-recommends git \
