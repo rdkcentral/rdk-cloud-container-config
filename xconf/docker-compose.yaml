@@ -48,6 +48,8 @@ services:
     build:
       context: ./xconfwebconfig
       dockerfile: Dockerfile
+      args:
+        GO_VERSION: ${GO_VERSION}
     networks:
       - xconf_networks
     ports:
@@ -71,6 +73,9 @@ services:
     build:
       context: ./xconfadmin
       dockerfile: Dockerfile
+      args:
+        GO_VERSION: ${GO_VERSION}
+
     networks:
       - xconf_networks
     ports:
@@ -87,6 +92,8 @@ services:
     build:
       context: ./xconfui
       dockerfile: Dockerfile
+      args:
+        GO_VERSION: ${GO_VERSION}
     networks:
       - xconf_networks
     ports:

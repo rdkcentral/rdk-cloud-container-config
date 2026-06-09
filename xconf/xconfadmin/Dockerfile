@@ -1,5 +1,7 @@
 # Start from Go 1.23 base image
-FROM golang:1.23 AS builder
+ARG GO_VERSION
+
+FROM golang:${GO_VERSION} AS builder
 
 # Install git (needed for cloning)
 RUN apt-get update && apt-get install -y --no-install-recommends git \
@@ -34,7 +36,7 @@ RUN ADMIN_FILE=$(find /app -type f -name "auth_handler.go" | head -n1) && \
 
  
 # Build a static binary compatible with Alpine
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 make
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 make build
  
 # Run stage
 FROM alpine:latest
@@ -46,6 +48,8 @@ COPY --from=builder /app/bin/xconfadmin-linux-amd64 .
 COPY --from=builder /app/config/sample_xconfadmin.conf ./xconfadmin.conf
 
 RUN sed -i 's/127\.0\.0\.1/cassandra/g' ./xconfadmin.conf
+
+RUN sed -i '/http_client {/a\   enable_cert_validation = false \' ./xconfadmin.conf
  
 RUN chmod +x xconfadmin-linux-amd64 && chmod 666 ./xconfadmin.conf
 
