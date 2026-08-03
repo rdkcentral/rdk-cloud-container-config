@@ -59,9 +59,7 @@ services:
         condition: service_healthy
     links:
       - "cassandra:cassandravm"
-    volumes:
-      - ./xconfwebconfig/data_service_start.sh:/app/xconfwebconfig/data_service_start.sh
-
+ 
   xconfadmin:
     container_name: xconfadmin
     image: xconfadmin
@@ -101,9 +99,7 @@ services:
     depends_on:
       cassandra-init:
         condition: service_healthy
-    volumes:
-      - "./configs/xconfui.conf:/app/xconfui/xconfui.conf"
-
+  
 networks:
   xconf_networks:
     driver: bridge
