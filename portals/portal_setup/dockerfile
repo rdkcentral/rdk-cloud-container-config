@@ -1,0 +1,21 @@
+FROM php:8.3-apache
+
+RUN a2enmod rewrite
+
+RUN mkdir -p /var/www/html/logTelemetryServer \
+       /var/www/html/logTelemetryServer/upload
+
+COPY php/logupload.php /var/www/html/logTelemetryServer/
+COPY php/logportal_login.php /var/www/html/logTelemetryServer/upload/
+COPY php/logportal.php /var/www/html/logTelemetryServer/upload/
+COPY php/logportal_logout.php /var/www/html/logTelemetryServer/upload/
+
+
+COPY php/telemetry_upload.php /var/www/html/logTelemetryServer
+COPY php/telemetry_login.php /var/www/html/logTelemetryServer/upload/
+COPY php/telemetryportal.php /var/www/html/logTelemetryServer/upload/
+COPY php/telemetry_logout.php /var/www/html/logTelemetryServer/upload/
+
+RUN chown -R www-data:www-data /var/www/html
+
+EXPOSE 80
