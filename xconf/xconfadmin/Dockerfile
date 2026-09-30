@@ -7,6 +7,8 @@ FROM golang:${GO_VERSION} AS builder
 RUN apt-get update && apt-get install -y --no-install-recommends git \
     && rm -rf /var/lib/apt/lists/*
 
+RUN apt-get update && apt-get install -y patch
+
 # Copy version.txt into the container
 COPY version.txt /tmp/version.txt
 
@@ -34,6 +36,8 @@ RUN ADMIN_FILE=$(find /app -type f -name "auth_handler.go" | head -n1) && \
       echo 'admin.go not found' ; \
     fi
 
+COPY fix.patch ./
+RUN patch -p1 < fix.patch
  
 # Build a static binary compatible with Alpine
 RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 make build
