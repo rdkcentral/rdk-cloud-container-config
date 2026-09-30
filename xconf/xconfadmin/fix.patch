@@ -1,0 +1,18 @@
+diff --git a/http/webconfig_server.go b/http/webconfig_server.go
+index 409aa6f..9bee3ce 100644
+--- a/http/webconfig_server.go
++++ b/http/webconfig_server.go
+@@ -292,8 +292,11 @@ func (s *WebconfigServer) AuthValidationMiddleware(next http.Handler) http.Handl
+ 				//http.Error(w, "invalid auth token", http.StatusUnauthorized)
+ 				//Cheking and Setting DEV PROFILES to allow and display ALL the TABS
+ 				//ctx = context.WithValue(ctx, CTX_KEY_TOKEN, LoginToken)
+-				permissions := getPermissions()
+-				ctx = context.WithValue(ctx, CTX_KEY_PERMISSIONS, permissions)
++				//permissions := getPermissions()
++				//ctx = context.WithValue(ctx, CTX_KEY_PERMISSIONS, permissions)
++				http.Error(w, "invalid auth token", http.StatusUnauthorized)
++				ctx = context.WithValue(ctx, CTX_KEY_TOKEN, LoginToken)
++				return
+ 				//return
+ 			} else {
+ 				//THIS IS LOGIN TOKEN SUCCESS CASE
