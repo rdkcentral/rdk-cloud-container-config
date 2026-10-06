@@ -1,7 +1,26 @@
-# Build stage
-FROM golang:1.24 AS builder
+ARG GO_VERSION
+
+FROM golang:${GO_VERSION} AS builder
+
  
 WORKDIR /app
+
+RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
+
+
+# Define the service name (hardcoded for this Dockerfile)
+ENV SERVICE=tr1d1um
+ENV REPO_URL=https://github.com/xmidt-org/tr1d1um.git 
+
+# Copy versions file into image
+COPY versions.txt /tmp/versions.txt
+
+# Lookup version from versions.txt and clone
+RUN TAG=$(grep "^${SERVICE}-" /tmp/versions.txt | cut -d'-' -f2) && \
+    if [ -z "$TAG" ]; then echo "No version found for ${SERVICE}" && exit 1; fi && \
+    git clone --branch "$TAG" --depth 1 "$REPO_URL" /app
+
+
 COPY . .
  
 # Build a static binary compatible with Alpine

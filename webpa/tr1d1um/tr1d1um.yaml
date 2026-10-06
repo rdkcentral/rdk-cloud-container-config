@@ -9,7 +9,7 @@
 # the X-Tr1d1um-Server header for showing what server fulfilled the request
 # sent.
 # (Optional)
-server: "<public_ip>"
+server: webpa-test.rdkcentral.com
 
 # Provides this build number to the X-Tr1d1um-Build header for
 # showing machine version information.  The build number SHOULD
@@ -302,7 +302,7 @@ authx:
 ##############################################################################
 
 # targetURL is the base URL of the XMiDT cluster
-targetURL: http://<public_ip>:6300/api/v2
+targetURL: http://webpa-test.rdkcentral.com:6300/api/v2
 
 # WRPSource is used as 'source' field for all outgoing WRP Messages
 WRPSource: "dns:tr1d1um.example.com"
