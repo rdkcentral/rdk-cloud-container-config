@@ -6,7 +6,7 @@
 # the X-Scytale-Server header for showing what server fulfilled the request
 # sent.
 # (Optional)
-server: "<public_ip>"
+server: webpa-test.rdkcentral.com
 
 ########################################
 #   Labeling/Tracing via HTTP Headers Configuration
@@ -211,7 +211,7 @@ fanout:
 #  # endpoints are the URLs for each endpoint to fan out to.
 #  # if this is set, it overrides the service.fixed values.
 #  # (Optional) if empty, endpoints are driven by service discovery
-  endpoints: ["http://<public_ip>:8080/api/v3/device/send"]
+  endpoints: ["http://localhost:8080/api/v3/device/send"]
 
   # pathPrefix is a string prepended to the beginning of the path being used for
   # fanout.
@@ -367,7 +367,7 @@ service:
   # fixed is the list of servers in the datacenter.
   # (Optional) default to empty list
   fixed:
-    - http://<public_ip>:6300
+    - http://webpa-test.rdkcentral.com:6300
   # # consul configures consul for service discovery.
   # # defined https://godoc.org/github.com/xmidt-org/webpa-common/service/consul#Options
   # # (Optional) defaults define https://sourcegraph.com/github.com/hashicorp/consul/-/blob/api/api.go#L347

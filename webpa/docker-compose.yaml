@@ -5,6 +5,8 @@ services:
     build:
       context: ./tr1d1um
       dockerfile: Dockerfile
+      args:
+        GO_VERSION: ${GO_VERSION}
     ports:
       - "6100-6103:6100-6103"
     volumes:
@@ -20,6 +22,8 @@ services:
     build:
       context: ./scytale
       dockerfile: Dockerfile
+      args:
+        GO_VERSION: ${GO_VERSION}
     ports:
       - "6300-6303:6300-6303"
     volumes:
@@ -35,6 +39,8 @@ services:
     build:
       context: ./talaria
       dockerfile: Dockerfile
+      args:
+        GO_VERSION: ${GO_VERSION}
     ports:
       - "8080:8080"
       - "6200-6204:6200-6204"
@@ -42,6 +48,20 @@ services:
       - ./talaria/talaria.yaml:/etc/talaria/talaria.yaml
     networks:
       - webpa_networks
+
+  caduceus:
+    image: caduceus
+    container_name: caduceus
+    build:
+      context: ./caducueus
+      dockerfile: Dockerfile
+      args:
+        GO_VERSION: ${GO_VERSION}
+    ports:
+      - "6000:6000"
+    networks:
+      - webpa_networks
+
 
 networks:
   webpa_networks:

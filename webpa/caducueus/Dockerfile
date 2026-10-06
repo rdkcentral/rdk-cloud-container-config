@@ -1,15 +1,17 @@
 ARG GO_VERSION
 
 FROM golang:${GO_VERSION} AS builder
+
  
 WORKDIR /app
+
 
 RUN apt-get update && apt-get install -y git && rm -rf /var/lib/apt/lists/*
 
 
 # Define the service name (hardcoded for this Dockerfile)
-ENV SERVICE=scytale
-ENV REPO_URL=https://github.com/xmidt-org/scytale.git 
+ENV SERVICE=caduceus
+ENV REPO_URL=https://github.com/xmidt-org/caduceus.git 
 
 # Copy versions file into image
 COPY versions.txt /tmp/versions.txt
@@ -20,20 +22,18 @@ RUN TAG=$(grep "^${SERVICE}-" /tmp/versions.txt | cut -d'-' -f2) && \
     git clone --branch "$TAG" --depth 1 "$REPO_URL" /app
 
 
-COPY . .
-
 # Build a static binary compatible with Alpine
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o scytale .
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -o caduceus .
  
 # Run stage
 FROM alpine:latest
  
-RUN mkdir -p /etc/scytale
-WORKDIR /etc/scytale
+RUN mkdir -p /etc/caduceus
+WORKDIR /etc/caduceus
  
-COPY --from=builder /app/scytale .
-COPY --from=builder /app/scytale.yaml .
+COPY --from=builder /app/caduceus .
+COPY --from=builder /app/caduceus.yaml .
  
-RUN chmod +x scytale && chmod 666 scytale.yaml
+RUN chmod +x caduceus && chmod 666 caduceus.yaml
  
-CMD ["/etc/scytale/scytale"]
+CMD ["/etc/caduceus/caduceus"]

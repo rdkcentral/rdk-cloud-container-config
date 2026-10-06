@@ -6,7 +6,7 @@
 # the X-Talaria-Server header for showing what server fulfilled the request
 # sent.
 # (Optional)
-server: "<public_ip>"
+server: webpa-test.rdkcentral.com
 
 ########################################
 #   Labeling/Tracing via HTTP Headers Configuration
