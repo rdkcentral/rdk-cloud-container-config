@@ -1,0 +1,14 @@
+{
+  "webconfig_server": {
+    "host": "webconfig.rdkcentral.com",
+    "port": 5000,
+    "api_endpoint": "/api/v1/device/%s/document/%s"
+  },
+  "file_permissions": "0644",
+  "logging": {
+    "level": "info",
+    "output": "stdout"
+  },
+  "timeout_seconds": 30,
+  "max_retries": 3
+}
